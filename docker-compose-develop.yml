@@ -1,0 +1,11 @@
+develop:
+  extends:
+    file: base.yml
+    service: base
+  container_name: gfw-quicc-alerts-api-develop
+  environment:
+    NODE_ENV: dev
+    CARTODB_USER: <user>
+  command: develop
+  volumes:
+    - ./app:/opt/gfw-quicc-alerts-api/app

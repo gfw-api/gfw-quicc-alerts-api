@@ -1,0 +1,11 @@
+{
+    "logger": {
+        "name": "gfw-quicc-alerts-api-STAGING",
+        "level": "debug",
+        "toFile": false,
+        "dirLogFile": null
+    },
+    "service": {
+        "port": null
+    }
+}
