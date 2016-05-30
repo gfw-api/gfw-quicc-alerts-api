@@ -7,51 +7,51 @@ var Mustache = require('mustache');
 var NotFound = require('errors/notFound');
 var JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
 
-const WORLD = 'SELECT COUNT(pt.*) AS value \
-            {{additionalSelect}} \
-        FROM quicc_alerts pt \
-        WHERE pt.date >= \'{{begin}}\' \
-            AND pt.date <= \'{{end}}\' \
-            AND ST_INTERSECTS( \
-                ST_SetSRID(ST_GeomFromGeoJSON(\'{{{geojson}}}\'), 4326), the_geom) ';
+const WORLD = `SELECT COUNT(pt.*) AS value
+            {{additionalSelect}}
+        FROM quicc_alerts pt
+        WHERE pt.date >= '{{begin}}'
+            AND pt.date <= '{{end}}'
+            AND ST_INTERSECTS(
+                ST_SetSRID(ST_GeomFromGeoJSON('{{{geojson}}}'), 4326), the_geom) `;
 
-const ISO = 'SELECT COUNT(pt.*) AS value \
-            {{additionalSelect}} \
-        FROM quicc_alerts pt, \
-            (SELECT * FROM gadm2_countries_simple \
-             WHERE iso = UPPER(\'{{iso}}\')) as p \
-        WHERE ST_Intersects(pt.the_geom, p.the_geom) \
-            AND pt.date >= \'{{begin}}\' \
-            AND pt.date <= \'{{end}}\' ';
+const ISO = `SELECT COUNT(pt.*) AS value
+            {{additionalSelect}}
+        FROM quicc_alerts pt,
+            (SELECT * FROM gadm2_countries_simple
+             WHERE iso = UPPER('{{iso}}')) as p
+        WHERE ST_Intersects(pt.the_geom, p.the_geom)
+            AND pt.date >= '{{begin}}'
+            AND pt.date <= '{{end}}' `;
 
-const ID1 = 'SELECT COUNT(pt.*) AS value \
-            {{additionalSelect}} \
-        FROM quicc_alerts pt, \
-            (SELECT * FROM gadm2_provinces_simple \
-             WHERE iso = UPPER(\'{{iso}}\') AND id_1 = {{id1}}) as p \
-        WHERE ST_Intersects(pt.the_geom, p.the_geom) \
-            AND pt.date >= \'{{begin}}\' \
-            AND pt.date <= \'{{end}}\' ';
+const ID1 = `SELECT COUNT(pt.*) AS value
+            {{additionalSelect}}
+        FROM quicc_alerts pt,
+            (SELECT * FROM gadm2_provinces_simple
+             WHERE iso = UPPER('{{iso}}') AND id_1 = {{id1}}) as p
+        WHERE ST_Intersects(pt.the_geom, p.the_geom)
+            AND pt.date >= '{{begin}}'
+            AND pt.date <= '{{end}}' `;
 
-const USE = 'SELECT COUNT(f.*) AS value \
-            {{additionalSelect}} \
-        FROM {{useTable}} u, latin_decrease_current_points f \
-        WHERE u.cartodb_id = {{pid}} \
-              AND ST_Intersects(f.the_geom, u.the_geom) \
-              AND date >= \'{{begin}}\' \
-              AND date <= \'{{end}}\' ';
+const USE = `SELECT COUNT(f.*) AS value
+            {{additionalSelect}}
+        FROM {{useTable}} u, latin_decrease_current_points f
+        WHERE u.cartodb_id = {{pid}}
+              AND ST_Intersects(f.the_geom, u.the_geom)
+              AND date >= '{{begin}}'
+              AND date <= '{{end}}' `;
 
-const WDPA = 'SELECT COUNT(pt.*) AS value \
-            {{additionalSelect}} \
-        FROM quicc_alerts pt, \
-            (SELECT CASE when marine::numeric = 2 then null \
-        when ST_NPoints(the_geom)<=18000 THEN the_geom \
-       WHEN ST_NPoints(the_geom) BETWEEN 18000 AND 50000 THEN ST_RemoveRepeatedPoints(the_geom, 0.001) \
-      ELSE ST_RemoveRepeatedPoints(the_geom, 0.005) \
-       END as the_geom FROM wdpa_protected_areas where wdpaid={{wdpaid}}) as p \
-        WHERE ST_Intersects(pt.the_geom, p.the_geom) \
-            AND pt.date >= \'{{begin}}\' \
-            AND pt.date <= \'{{end}}\'  ';
+const WDPA = `SELECT COUNT(pt.*) AS value
+            {{additionalSelect}}
+        FROM quicc_alerts pt,
+            (SELECT CASE when marine::numeric = 2 then null
+        when ST_NPoints(the_geom)<=18000 THEN the_geom
+       WHEN ST_NPoints(the_geom) BETWEEN 18000 AND 50000 THEN ST_RemoveRepeatedPoints(the_geom, 0.001)
+      ELSE ST_RemoveRepeatedPoints(the_geom, 0.005)
+       END as the_geom FROM wdpa_protected_areas where wdpaid={{wdpaid}}) as p
+        WHERE ST_Intersects(pt.the_geom, p.the_geom)
+            AND pt.date >= '{{begin}}'
+            AND pt.date <= '{{end}}'  `;
 
 const MIN_MAX_DATE_SQL = ', MIN(date) as min_date, MAX(date) as max_date ';
 
@@ -103,8 +103,12 @@ class CartoDBService {
         try{
             let formats = ['csv', 'geojson', 'kml', 'shp', 'svg'];
             let download = {};
+            let queryFinal = Mustache.render(query, params);
+            queryFinal = queryFinal.replace(MIN_MAX_DATE_SQL, '');
+            queryFinal = queryFinal.replace('SELECT COUNT(pt.*) AS value', 'SELECT pt.*');
+            queryFinal = encodeURIComponent(queryFinal);
             for(let i=0, length = formats.length; i < length; i++){
-                download[formats[i]] = this.apiUrl + '?q=' + encodeURIComponent(Mustache.render(query, params)) + '&format=' + formats[i];
+                download[formats[i]] = this.apiUrl + '?q=' + queryFinal + '&format=' + formats[i];
             }
             return download;
         }catch(err){
