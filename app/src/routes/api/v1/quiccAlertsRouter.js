@@ -61,18 +61,24 @@ class QuiccAlertsRouter {
     static * world() {
         logger.info('Obtaining world data');
         this.assert(this.query.geostore, 400, 'GeoJSON param required');
-        try{
+        try {
             let data = yield CartoDBService.getWorld(this.query.geostore, this.query.alertQuery, this.query.period);
 
             this.body = QuiccAlertsSerializer.serialize(data);
-        } catch(err){
-            if(err instanceof NotFound){
+        } catch (err) {
+            if (err instanceof NotFound) {
                 this.throw(404, 'Geostore not found');
                 return;
             }
             throw err;
         }
 
+    }
+
+    static * latest() {
+        logger.info('Obtaining latest data');
+        let data = yield CartoDBService.latest(this.query.limit);
+        this.body = QuiccAlertsSerializer.serializeLatest(data);
     }
 
 }
@@ -91,6 +97,7 @@ router.get('/admin/:iso/:id1', isCached, QuiccAlertsRouter.getSubnational);
 router.get('/use/:name/:id', isCached, QuiccAlertsRouter.use);
 router.get('/wdpa/:id', isCached, QuiccAlertsRouter.wdpa);
 router.get('/', isCached, QuiccAlertsRouter.world);
+router.get('/latest', isCached, QuiccAlertsRouter.latest);
 
 
 module.exports = router;
