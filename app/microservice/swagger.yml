@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   title: GFW Terrai Alerts API
-  description: Global Forest Watch - Terrai Alerts API
+  description: Global Forest Watch - Quicc Alerts API
   version: "1.0.0"
 host: example.vizzuality.com
 
@@ -146,7 +146,6 @@ paths:
 
   /quicc-alerts/admin/{iso}:
     get:
-      description: a
       operationId: getNational
       produces:
         - application/vnd.api+json
@@ -188,7 +187,6 @@ paths:
 
   /quicc-alerts/admin/{iso}/{id1}:
     get:
-      description: a
       operationId: getSubnational
       produces:
         - application/vnd.api+json
@@ -232,7 +230,35 @@ paths:
           description: unexpected error
           schema:
             $ref: '#/definitions/Errors'
-
+  /quicc-alerts/latest:
+    get:
+      operationId: getLatest
+      produces:
+        - application/vnd.api+json
+      tags:
+        - QUICC
+      parameters:
+        - name: limit
+          in: query
+          description: Limit. Default 3
+          type: integer
+      responses:
+        200:
+          description: Results obtained
+          schema:
+            $ref: '#/definitions/QUICCLATESTAPI'
+        404:
+          description: Geostore not found
+          schema:
+            $ref: '#/definitions/Errors'
+        500:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Errors'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/Errors'
 
 definitions:
   Errors:
@@ -283,6 +309,34 @@ definitions:
       meta:
         type: object
         description: A meta object containing non-standard meta-information about the error.
+
+  QUICCLATESTAPI:
+    type: object
+    properties:
+      data:
+        properties:
+          $schema:
+            $ref: '#/definitions/QUICCLATESTBody'
+  QUICCLATESTBody:
+    type: object
+    properties:
+      type:
+        type: string
+        description: Resource type
+      id:
+        type: string
+        description: Resource id
+      attributes:
+        properties:
+          schema:
+            $ref: '#/definitions/QUICCLATESTModel'
+
+  QUICCLATESTModel:
+    type: object
+    properties:
+      date:
+        type: string
+        format: date
 
   QUICCALERTSAPI:
     type: object
