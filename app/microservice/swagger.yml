@@ -315,7 +315,7 @@ definitions:
     properties:
       data:
         properties:
-          $schema:
+          schema:
             $ref: '#/definitions/QUICCLATESTBody'
   QUICCLATESTBody:
     type: object
@@ -343,7 +343,7 @@ definitions:
     properties:
       data:
         properties:
-          $schema:
+          schema:
             $ref: '#/definitions/QUICCALERTSBody'
 
   QUICCALERTSBody:
