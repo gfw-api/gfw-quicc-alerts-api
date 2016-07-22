@@ -9,7 +9,8 @@ var quiccAlertsSerializer = new JSONAPISerializer('quicc-alerts', {
     },
     downloadUrls: {
         attributes: ['csv', 'geojson', 'kml', 'shp', 'svg']
-    }
+    },
+    keyForAttribute: 'camelCase'
 });
 
 var quiccLatestSerializer = new JSONAPISerializer('imazon-latest', {
