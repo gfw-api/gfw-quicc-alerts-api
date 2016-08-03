@@ -1,4 +1,4 @@
-# GFW Fires API
+# GFW Quicc Alerts API
 
 
 This repository is the microservice that it implement the quicc alerts funcionality and exposed the /terrai-alerts endpoints in the api-gateway
