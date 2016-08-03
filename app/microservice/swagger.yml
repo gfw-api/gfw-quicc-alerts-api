@@ -1,7 +1,19 @@
 swagger: '2.0'
 info:
-  title: GFW Terrai Alerts API
-  description: Global Forest Watch - Quicc Alerts API
+  title: GFW Quicc Alerts API
+  description: |
+    ## Global Forest Watch - Quicc Alerts API
+
+    Identifies areas of land that have lost at least 40% of their green vegetation cover compared to the same quarter of the previous year
+
+    | Property | Value |
+    | --- | --- | --- |
+    | Coverage | Global, except for areas >37 degrees north |
+    | Resolution | 5 x 5 kilometers (MODIS) |
+    | Source | NASA |
+    | Timescale | October 2011–present |
+    | Units | Alerts |
+    | Updates | Quarterly (April, July, October, January) |
   version: "1.0.0"
 host: example.vizzuality.com
 
