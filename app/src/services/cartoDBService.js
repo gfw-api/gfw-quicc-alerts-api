@@ -1,11 +1,9 @@
-'use strict';
-var logger = require('logger');
-var path = require('path');
-var config = require('config');
-var CartoDB = require('cartodb');
-var Mustache = require('mustache');
-var NotFound = require('errors/notFound');
-var JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
+const logger = require('logger');
+const config = require('config');
+const CartoDB = require('cartodb');
+const Mustache = require('mustache');
+const NotFound = require('errors/notFound');
+const JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
 
 const WORLD = `SELECT COUNT(pt.*) AS value
             {{additionalSelect}}
@@ -61,39 +59,53 @@ const LATEST = `SELECT DISTINCT date
 
 const MIN_MAX_DATE_SQL = ', MIN(date) as min_date, MAX(date) as max_date ';
 
-var executeThunk = function(client, sql, params) {
-    return function(callback) {
-        logger.debug(Mustache.render(sql, params));
-        client.execute(sql, params).done(function(data) {
-            callback(null, data);
-        }).error(function(err) {
-            callback(err, null);
-        });
-    };
+const executeThunk = (client, sql, params) => (callback) => {
+    logger.debug(Mustache.render(sql, params));
+    client.execute(sql, params).done((data) => {
+        callback(null, data);
+    }).error((err) => {
+        callback(err, null);
+    });
 };
 
-var deserializer = function(obj) {
-    return function(callback) {
-        new JSONAPIDeserializer({keyForAttribute: 'camelCase'}).deserialize(obj, callback);
-    };
+const deserializer = (obj) => (callback) => {
+    new JSONAPIDeserializer({ keyForAttribute: 'camelCase' }).deserialize(obj, callback);
 };
 
 
-let getToday = function() {
-    let today = new Date();
-    return `${today.getFullYear().toString()}-${(today.getMonth()+1).toString()}-${today.getDate().toString()}`;
+const getToday = () => {
+    const today = new Date();
+    return `${today.getFullYear().toString()}-${(today.getMonth() + 1).toString()}-${today.getDate().toString()}`;
 };
 
-let getYesterday = function() {
-    let yesterday = new Date(Date.now() - (24 * 60 * 60 * 1000));
-    return `${yesterday.getFullYear().toString()}-${(yesterday.getMonth()+1).toString()}-${yesterday.getDate().toString()}`;
+const getYesterday = () => {
+    const yesterday = new Date(Date.now() - (24 * 60 * 60 * 1000));
+    return `${yesterday.getFullYear().toString()}-${(yesterday.getMonth() + 1).toString()}-${yesterday.getDate().toString()}`;
 };
 
 
-let defaultDate = function() {
-    let to = getToday();
-    let from = getYesterday();
-    return from + ',' + to;
+const defaultDate = () => {
+    const to = getToday();
+    const from = getYesterday();
+    return `${from},${to}`;
+};
+
+const getPeriodText = (period) => {
+    const periods = period.split(',');
+    const days = (new Date(periods[1]) - new Date(periods[0])) / (24 * 60 * 60 * 1000);
+
+    switch (days) {
+
+        case 1:
+            return 'Past 24 hours';
+        case 2:
+            return 'Past 48 hours';
+        case 3:
+            return 'Past 72 hours';
+        default:
+            return 'Past week';
+
+    }
 };
 
 class CartoDBService {
@@ -105,58 +117,44 @@ class CartoDBService {
         this.apiUrl = config.get('cartoDB.apiUrl');
     }
 
+    // eslint-disable-next-line consistent-return
     getDownloadUrls(query, params) {
-        try{
-            let formats = ['csv', 'geojson', 'kml', 'shp', 'svg'];
-            let download = {};
+        try {
+            const formats = ['csv', 'geojson', 'kml', 'shp', 'svg'];
+            const download = {};
             let queryFinal = Mustache.render(query, params);
             logger.debug('antes de reemplazar', queryFinal);
             queryFinal = queryFinal.replace(MIN_MAX_DATE_SQL, '');
             logger.debug('antes de reemplazar', queryFinal);
 
+            // eslint-disable-next-line no-useless-escape
             queryFinal = queryFinal.replace('SELECT COUNT(pt.\*) AS value', 'SELECT pt.*');
             logger.debug('despues de reemplazar', queryFinal);
             queryFinal = encodeURIComponent(queryFinal);
-            for(let i=0, length = formats.length; i < length; i++){
-                download[formats[i]] = this.apiUrl + '?q=' + queryFinal + '&format=' + formats[i];
+            for (let i = 0, { length } = formats; i < length; i++) {
+                download[formats[i]] = `${this.apiUrl}?q=${queryFinal}&format=${formats[i]}`;
             }
             return download;
-        }catch(err){
+        } catch (err) {
             logger.error(err);
-        }
-    }
-
-    getPeriodText(period) {
-        let periods = period.split(',');
-        let days = (new Date(periods[1]) - new Date(periods[0])) / (24 * 60 * 60 * 1000);
-
-        switch (days) {
-            case 1:
-                return 'Past 24 hours';
-            case 2:
-                return 'Past 48 hours';
-            case 3:
-                return 'Past 72 hours';
-            default:
-                return 'Past week';
         }
     }
 
     * getNational(iso, alertQuery, period = defaultDate()) {
         logger.debug('Obtaining national of iso %s', iso);
-        let periods = period.split(',');
-        let params = {
-            iso: iso,
+        const periods = period.split(',');
+        const params = {
+            iso,
             begin: periods[0],
             end: periods[1]
         };
-        if(alertQuery){
+        if (alertQuery) {
             params.additionalSelect = MIN_MAX_DATE_SQL;
         }
-        let data = yield executeThunk(this.client, ISO, params);
+        const data = yield executeThunk(this.client, ISO, params);
         if (data.rows && data.rows.length > 0) {
-            let result = data.rows[0];
-            result.period = this.getPeriodText(period);
+            const result = data.rows[0];
+            result.period = getPeriodText(period);
             result.downloadUrls = this.getDownloadUrls(ISO, params);
             return result;
         }
@@ -165,20 +163,20 @@ class CartoDBService {
 
     * getSubnational(iso, id1, alertQuery, period = defaultDate()) {
         logger.debug('Obtaining subnational of iso %s and id1', iso, id1);
-        let periods = period.split(',');
-        let params = {
-            iso: iso,
-            id1: id1,
+        const periods = period.split(',');
+        const params = {
+            iso,
+            id1,
             begin: periods[0],
             end: periods[1]
         };
-        if(alertQuery){
+        if (alertQuery) {
             params.additionalSelect = MIN_MAX_DATE_SQL;
         }
-        let data = yield executeThunk(this.client, ID1, params);
+        const data = yield executeThunk(this.client, ID1, params);
         if (data.rows && data.rows.length > 0) {
-            let result = data.rows[0];
-            result.period = this.getPeriodText(period);
+            const result = data.rows[0];
+            result.period = getPeriodText(period);
             result.downloadUrls = this.getDownloadUrls(ID1, params);
             return result;
         }
@@ -187,21 +185,21 @@ class CartoDBService {
 
     * getUse(useTable, id, alertQuery, period = defaultDate()) {
         logger.debug('Obtaining use with id %s', id);
-        let periods = period.split(',');
-        let params = {
-            useTable: useTable,
+        const periods = period.split(',');
+        const params = {
+            useTable,
             pid: id,
             begin: periods[0],
             end: periods[1]
         };
-        if(alertQuery){
+        if (alertQuery) {
             params.additionalSelect = MIN_MAX_DATE_SQL;
         }
-        let data = yield executeThunk(this.client, USE, params);
+        const data = yield executeThunk(this.client, USE, params);
 
         if (data.rows && data.rows.length > 0) {
-            let result = data.rows[0];
-            result.period = this.getPeriodText(period);
+            const result = data.rows[0];
+            result.period = getPeriodText(period);
             result.downloadUrls = this.getDownloadUrls(USE, params);
             return result;
         }
@@ -210,35 +208,36 @@ class CartoDBService {
 
     * getWdpa(wdpaid, alertQuery, period = defaultDate()) {
         logger.debug('Obtaining wpda of id %s', wdpaid);
-        let periods = period.split(',');
-        let params = {
-            wdpaid: wdpaid,
+        const periods = period.split(',');
+        const params = {
+            wdpaid,
             begin: periods[0],
             end: periods[1]
         };
-        if(alertQuery){
+        if (alertQuery) {
             params.additionalSelect = MIN_MAX_DATE_SQL;
         }
-        let data = yield executeThunk(this.client, WDPA, params);
+        const data = yield executeThunk(this.client, WDPA, params);
         if (data.rows && data.rows.length > 0) {
-            let result = data.rows[0];
-            result.period = this.getPeriodText(period);
+            const result = data.rows[0];
+            result.period = getPeriodText(period);
             result.downloadUrls = this.getDownloadUrls(WDPA, params);
             return result;
         }
         return null;
     }
 
+    // eslint-disable-next-line class-methods-use-this
     * getGeostore(hashGeoStore) {
         logger.debug('Obtaining geostore with hash %s', hashGeoStore);
-        let result = yield require('vizz.microservice-client').requestToMicroservice({
-            uri: '/geostore/' + hashGeoStore,
+        const result = yield require('vizz.microservice-client').requestToMicroservice({
+            uri: `/geostore/${hashGeoStore}`,
             method: 'GET',
             json: true
         });
         if (result.statusCode !== 200) {
-            console.error('Error obtaining geostore:');
-            console.error(result);
+            logger.warn('Error obtaining geostore:');
+            logger.warn(result);
             return null;
         }
         return yield deserializer(result.body);
@@ -247,22 +246,22 @@ class CartoDBService {
     * getWorld(hashGeoStore, alertQuery, period = defaultDate()) {
         logger.debug('Obtaining world with hashGeoStore %s', hashGeoStore);
 
-        let geostore = yield this.getGeostore(hashGeoStore);
+        const geostore = yield this.getGeostore(hashGeoStore);
         if (geostore && geostore.geojson) {
             logger.debug('Executing query in cartodb with geostore', geostore);
-            let periods = period.split(',');
-            let params = {
+            const periods = period.split(',');
+            const params = {
                 geojson: JSON.stringify(geostore.geojson.features[0].geometry),
                 begin: periods[0],
                 end: periods[1]
             };
-            if(alertQuery){
+            if (alertQuery) {
                 params.additionalSelect = MIN_MAX_DATE_SQL;
             }
-            let data = yield executeThunk(this.client, WORLD, params);
+            const data = yield executeThunk(this.client, WORLD, params);
             if (data.rows && data.rows.length > 0) {
-                let result = data.rows[0];
-                result.period = this.getPeriodText(period);
+                const result = data.rows[0];
+                result.period = getPeriodText(period);
                 result.downloadUrls = this.getDownloadUrls(WORLD, params);
                 return result;
             }
@@ -271,15 +270,15 @@ class CartoDBService {
         throw new NotFound('Geostore not found');
     }
 
-    * latest(limit=3) {
+    * latest(limit = 3) {
         logger.debug('Obtaining latest with limit %s', limit);
-        let params = {
-            limit: limit
+        const params = {
+            limit
         };
-        let data = yield executeThunk(this.client, LATEST, params);
+        const data = yield executeThunk(this.client, LATEST, params);
         logger.debug('data', data);
-        if (data.rows ) {
-            let result = data.rows;
+        if (data.rows) {
+            const result = data.rows;
             return result;
         }
         return null;
