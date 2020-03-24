@@ -1,34 +1,34 @@
-'use strict';
-
-var Router = require('koa-router');
-var logger = require('logger');
-var CartoDBService = require('services/cartoDBService');
-var NotFound = require('errors/notFound');
-var QuiccAlertsSerializer = require('serializers/quiccAlertsSerializer');
+const Router = require('koa-router');
+const logger = require('logger');
+const CartoDBService = require('services/cartoDBService');
+const NotFound = require('errors/notFound');
+const QuiccAlertsSerializer = require('serializers/quiccAlertsSerializer');
 
 
-var router = new Router({
+const router = new Router({
     prefix: '/quicc-alerts'
 });
 
 class QuiccAlertsRouter {
-    static * getNational() {
+
+    static* getNational() {
         logger.info('Obtaining national data');
-        let data = yield CartoDBService.getNational(this.params.iso, this.query.alertQuery, this.query.period);
+        const data = yield CartoDBService.getNational(this.params.iso, this.query.alertQuery, this.query.period);
 
         this.body = QuiccAlertsSerializer.serialize(data);
     }
 
-    static * getSubnational() {
+    static* getSubnational() {
         logger.info('Obtaining subnational data');
-        let data = yield CartoDBService.getSubnational(this.params.iso, this.params.id1, this.query.alertQuery, this.query.period);
+        const data = yield CartoDBService.getSubnational(this.params.iso, this.params.id1, this.query.alertQuery, this.query.period);
         this.body = QuiccAlertsSerializer.serialize(data);
     }
 
-    static * use() {
+    static* use() {
         logger.info('Obtaining use data with name %s and id %s', this.params.name, this.params.id);
         let useTable = null;
         switch (this.params.name) {
+
             case 'mining':
                 useTable = 'gfw_mining';
                 break;
@@ -43,26 +43,27 @@ class QuiccAlertsRouter {
                 break;
             default:
                 this.throw(400, 'Name param invalid');
+
         }
         if (!useTable) {
             this.throw(404, 'Name not found');
         }
-        let data = yield CartoDBService.getUse(useTable, this.params.id, this.query.alertQuery, this.query.period);
+        const data = yield CartoDBService.getUse(useTable, this.params.id, this.query.alertQuery, this.query.period);
         this.body = QuiccAlertsSerializer.serialize(data);
 
     }
 
-    static * wdpa() {
+    static* wdpa() {
         logger.info('Obtaining wpda data with id %s', this.params.id);
-        let data = yield CartoDBService.getWdpa(this.params.id, this.query.alertQuery, this.query.period);
+        const data = yield CartoDBService.getWdpa(this.params.id, this.query.alertQuery, this.query.period);
         this.body = QuiccAlertsSerializer.serialize(data);
     }
 
-    static * world() {
+    static* world() {
         logger.info('Obtaining world data');
         this.assert(this.query.geostore, 400, 'GeoJSON param required');
         try {
-            let data = yield CartoDBService.getWorld(this.query.geostore, this.query.alertQuery, this.query.period);
+            const data = yield CartoDBService.getWorld(this.query.geostore, this.query.alertQuery, this.query.period);
 
             this.body = QuiccAlertsSerializer.serialize(data);
         } catch (err) {
@@ -75,21 +76,20 @@ class QuiccAlertsRouter {
 
     }
 
-    static * latest() {
+    static* latest() {
         logger.info('Obtaining latest data');
-        let data = yield CartoDBService.latest(this.query.limit);
+        const data = yield CartoDBService.latest(this.query.limit);
         this.body = QuiccAlertsSerializer.serializeLatest(data);
     }
 
 }
 
-var isCached = function*(next) {
+const isCached = function* isCached(next) {
     if (yield this.cashed()) {
         return;
     }
     yield next;
 };
-
 
 
 router.get('/admin/:iso', isCached, QuiccAlertsRouter.getNational);

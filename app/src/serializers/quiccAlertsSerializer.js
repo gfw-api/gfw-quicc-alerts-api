@@ -1,10 +1,8 @@
-'use strict';
+const JSONAPISerializer = require('jsonapi-serializer').Serializer;
 
-var logger = require('logger');
-var JSONAPISerializer = require('jsonapi-serializer').Serializer;
-var quiccAlertsSerializer = new JSONAPISerializer('quicc-alerts', {
+const quiccAlertsSerializer = new JSONAPISerializer('quicc-alerts', {
     attributes: ['value', 'period', 'min_date', 'max_date', 'downloadUrls'],
-    typeForAttribute: function(attribute, record) {
+    typeForAttribute(attribute) {
         return attribute;
     },
     downloadUrls: {
@@ -13,9 +11,9 @@ var quiccAlertsSerializer = new JSONAPISerializer('quicc-alerts', {
     keyForAttribute: 'camelCase'
 });
 
-var quiccLatestSerializer = new JSONAPISerializer('imazon-latest', {
+const quiccLatestSerializer = new JSONAPISerializer('imazon-latest', {
     attributes: ['date'],
-    typeForAttribute: function(attribute, record) {
+    typeForAttribute(attribute) {
         return attribute;
     }
 });
@@ -25,9 +23,11 @@ class QuiccAlertsSerializer {
     static serialize(data) {
         return quiccAlertsSerializer.serialize(data);
     }
+
     static serializeLatest(data) {
         return quiccLatestSerializer.serialize(data);
     }
+
 }
 
 module.exports = QuiccAlertsSerializer;
