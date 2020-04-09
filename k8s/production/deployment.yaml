@@ -12,6 +12,15 @@ spec:
       labels:
         name: quicc
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: type
+                    operator: In
+                    values:
+                      - apps
       containers:
       - name: quicc
         image: vizzuality/quicc
