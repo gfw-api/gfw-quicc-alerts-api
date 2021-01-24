@@ -4,6 +4,7 @@ const CartoDB = require('cartodb');
 const Mustache = require('mustache');
 const NotFound = require('errors/notFound');
 const JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
+const { RWAPIMicroservice } = require('rw-api-microservice-node');
 
 const WORLD = `SELECT COUNT(pt.*) AS value
             {{additionalSelect}}
@@ -230,17 +231,19 @@ class CartoDBService {
     // eslint-disable-next-line class-methods-use-this
     * getGeostore(hashGeoStore) {
         logger.debug('Obtaining geostore with hash %s', hashGeoStore);
-        const result = yield require('vizz.microservice-client').requestToMicroservice({
-            uri: `/geostore/${hashGeoStore}`,
-            method: 'GET',
-            json: true
-        });
-        if (result.statusCode !== 200) {
+        try {
+            const result = yield RWAPIMicroservice.requestToMicroservice({
+                uri: `/geostore/${hashGeoStore}`,
+                method: 'GET',
+                json: true
+            });
+
+            return yield deserializer(result);
+        } catch (error) {
             logger.warn('Error obtaining geostore:');
-            logger.warn(result);
+            logger.warn(error);
             return null;
         }
-        return yield deserializer(result.body);
     }
 
     * getWorld(hashGeoStore, alertQuery, period = defaultDate()) {
