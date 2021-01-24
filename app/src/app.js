@@ -1,7 +1,6 @@
 // load modules
 const config = require('config');
 const logger = require('logger');
-const path = require('path');
 const koa = require('koa');
 const bodyParser = require('koa-bodyparser');
 const koaLogger = require('koa-logger');
@@ -10,6 +9,7 @@ const validate = require('koa-validate');
 const convert = require('koa-convert');
 const koaSimpleHealthCheck = require('koa-simple-healthcheck');
 const ErrorSerializer = require('serializers/errorSerializer');
+const { RWAPIMicroservice } = require('rw-api-microservice-node');
 
 // instance of koa
 const app = koa();
@@ -70,6 +70,19 @@ app.use(validate());
 
 app.use(convert.back(koaSimpleHealthCheck()));
 
+app.use(convert.back(RWAPIMicroservice.bootstrap({
+    name: config.get('service.name'),
+    info: require('../microservice/register.json'),
+    swagger: require('../microservice/public-swagger.json'),
+    logger,
+    baseURL: process.env.CT_URL,
+    url: process.env.LOCAL_URL,
+    token: process.env.CT_TOKEN,
+    fastlyEnabled: process.env.FASTLY_ENABLED,
+    fastlyServiceId: process.env.FASTLY_SERVICEID,
+    fastlyAPIKey: process.env.FASTLY_APIKEY
+})));
+
 // load routes
 loader.loadRoutes(app);
 
@@ -81,18 +94,13 @@ const appServer = require('http').Server(app.callback());
 const port = process.env.PORT || config.get('service.port');
 
 const server = appServer.listen(port, () => {
-    const microserviceClient = require('vizz.microservice-client');
-
-    microserviceClient.register({
-        id: config.get('service.id'),
-        name: config.get('service.name'),
-        dirConfig: path.join(__dirname, '../microservice'),
-        dirPackage: path.join(__dirname, '../../'),
-        logger,
-        app
-    });
-    if (process.env.CT_REGISTER_MODE && process.env.CT_REGISTER_MODE === 'auto') {
-        microserviceClient.autoDiscovery(config.get('service.name'));
+    if (process.env.CT_REGISTER_MODE === 'auto') {
+        RWAPIMicroservice.register().then(() => {
+            logger.info('CT registration process started');
+        }, (error) => {
+            logger.error(error);
+            process.exit(1);
+        });
     }
 });
 
