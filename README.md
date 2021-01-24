@@ -1,6 +1,6 @@
 # GFW Quicc Alerts API
 
-[![Build Status](https://travis-ci.org/gfw-api/gfw-quicc-alerts-api.svg?branch=develop)](https://travis-ci.org/gfw-api/gfw-quicc-alerts-api)
+[![Build Status](https://travis-ci.com/gfw-api/gfw-quicc-alerts-api.svg?branch=dev)](https://travis-ci.com/gfw-api/gfw-quicc-alerts-api)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/ec043e87f221b1d8a547/test_coverage)](https://codeclimate.com/github/gfw-api/gfw-quicc-alerts-api/test_coverage)
 
 This repository is the microservice that it implement the quicc alerts functionality and exposed the /terrai-alerts endpoints in the api-gateway
