@@ -3,17 +3,18 @@ services:
   develop:
     build: .
     ports:
-      - "3600:3600"
+      - "3605:3605"
     container_name: gfw-quicc-alerts-api-develop
     environment:
-      PORT: 3600
+      PORT: 3605
       NODE_PATH: app/src
+      CT_URL: http://mymachine:9000
       CT_REGISTER_MODE: auto
       CT_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Im1pY3Jvc2VydmljZSIsImNyZWF0ZWRBdCI6IjIwMTYtMDktMTQifQ.IRCIRm1nfIQTfda_Wb6Pg-341zhV8soAgzw7dd5HxxQ
       NODE_ENV: dev
       CARTODB_USER: wri-01
       API_GATEWAY_URL: http://192.168.99.100:8000
-      LOCAL_URL: http://127.0.0.1:3600
+      LOCAL_URL: http://127.0.0.1:3605
       FASTLY_ENABLED: "false"
 
     command: develop
