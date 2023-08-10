@@ -5,7 +5,7 @@ ENV NAME gfw-quicc-alerts-api
 ENV USER microservice
 
 RUN apk update && apk upgrade && \
-    apk add --no-cache --update bash git openssh python build-base
+    apk add --no-cache --update bash git openssh python3 build-base
 
 RUN addgroup $USER && adduser -s /bin/bash -D -G $USER $USER
 
@@ -17,11 +17,13 @@ COPY yarn.lock /opt/$NAME/yarn.lock
 RUN cd /opt/$NAME && yarn
 
 COPY entrypoint.sh /opt/$NAME/entrypoint.sh
+COPY tsconfig.json /opt/$NAME/tsconfig.json
 COPY config /opt/$NAME/config
+COPY ./src /opt/$NAME/src
+COPY ./test opt/$NAME/test
 
 WORKDIR /opt/$NAME
 
-COPY ./app /opt/$NAME/app
 RUN chown -R $USER:$USER /opt/$NAME
 
 # Tell Docker we are going to use this ports
