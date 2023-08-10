@@ -7,9 +7,6 @@ import bodyParser from 'koa-bodyparser';
 import { RWAPIMicroservice } from 'rw-api-microservice-node';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import koaValidate from 'koa-validate';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import koaSimpleHealthCheck from 'koa-simple-healthcheck';
 import koaCash from 'koa-cash';
 import { LRUCache } from 'lru-cache';
@@ -82,9 +79,6 @@ const init: () => Promise<IInit> = async (): Promise<IInit> => {
             },
             hash: (ctx: Application.Context) => ctx.request.originalUrl
         }));
-
-        // load custom validator
-        koaValidate(app);
 
         app.use(RWAPIMicroservice.bootstrap({
             logger,

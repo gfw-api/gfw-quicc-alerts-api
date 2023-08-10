@@ -84,7 +84,10 @@ class QuiccAlertsRouter {
 
     static async world(ctx: Context): Promise<void> {
         logger.info('Obtaining world data');
-        ctx.assert(ctx.request.query.geostore, 400, 'GeoJSON param required');
+        if (!ctx.request.query.geostore) {
+            ctx.throw(400, 'Geostore param required');
+            return;
+        }
         try {
             const data: Record<string, any> | void = await CartoDBService.getWorld(
                 ctx.request.query.geostore as string,
