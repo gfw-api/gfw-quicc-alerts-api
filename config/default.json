@@ -6,7 +6,7 @@
     "dirLogFile": null
   },
   "service": {
-    "id": "gfw-quicc-alerts-api_1.0.0",
+    "id": "gfw-quicc-alerts-api",
     "name": "GFW Quicc Alerts API",
     "port": 3600
   },

@@ -1,12 +1,16 @@
-const logger = require('logger');
-const config = require('config');
-const CartoDB = require('cartodb');
-const Mustache = require('mustache');
-const NotFound = require('errors/notFound');
-const JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
-const { RWAPIMicroservice } = require('rw-api-microservice-node');
+import config from 'config';
+import logger from 'logger';
+import Mustache from 'mustache';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import CartoDB from 'cartodb';
+import { Deserializer } from "jsonapi-serializer";
+import { RWAPIMicroservice } from "rw-api-microservice-node";
+import ErrorSerializer from "serializers/error.serializer";
+import NotFound from "errors/notFound";
 
-const WORLD = `SELECT COUNT(pt.*) AS value
+
+const WORLD: string = `SELECT COUNT(pt.*) AS value
             {{additionalSelect}}
         FROM quicc_alerts pt
         WHERE pt.date >= '{{begin}}'::date
@@ -14,7 +18,7 @@ const WORLD = `SELECT COUNT(pt.*) AS value
             AND ST_INTERSECTS(
                 ST_SetSRID(ST_GeomFromGeoJSON('{{{geojson}}}'), 4326), the_geom) `;
 
-const ISO = `SELECT COUNT(pt.*) AS value
+const ISO: string = `SELECT COUNT(pt.*) AS value
             {{additionalSelect}}
         FROM quicc_alerts pt,
             (SELECT * FROM gadm2_countries_simple
@@ -23,7 +27,7 @@ const ISO = `SELECT COUNT(pt.*) AS value
             AND pt.date >= '{{begin}}'::date
             AND pt.date <= '{{end}}'::date `;
 
-const ID1 = `SELECT COUNT(pt.*) AS value
+const ID1: string = `SELECT COUNT(pt.*) AS value
             {{additionalSelect}}
         FROM quicc_alerts pt,
             (SELECT * FROM gadm2_provinces_simple
@@ -32,7 +36,7 @@ const ID1 = `SELECT COUNT(pt.*) AS value
             AND pt.date >= '{{begin}}'::date
             AND pt.date <= '{{end}}'::date `;
 
-const USE = `SELECT COUNT(pt.*) AS value
+const USE: string = `SELECT COUNT(pt.*) AS value
             {{additionalSelect}}
         FROM quicc_alerts pt,
             (SELECT * FROM {{useTable}} WHERE cartodb_id = {{pid}}) as p
@@ -40,7 +44,7 @@ const USE = `SELECT COUNT(pt.*) AS value
             AND pt.date >= '{{begin}}'::date
             AND pt.date <= '{{end}}'::date `;
 
-const WDPA = `SELECT COUNT(pt.*) AS value
+const WDPA: string = `SELECT COUNT(pt.*) AS value
             {{additionalSelect}}
         FROM quicc_alerts pt,
             (SELECT CASE when marine::numeric = 2 then null
@@ -52,48 +56,43 @@ const WDPA = `SELECT COUNT(pt.*) AS value
             AND pt.date >= '{{begin}}'::date
             AND pt.date <= '{{end}}'::date  `;
 
-const LATEST = `SELECT DISTINCT date
+const LATEST: string = `SELECT DISTINCT date
         FROM quicc_alerts
         WHERE date IS NOT NULL
         ORDER BY date DESC
         LIMIT {{limit}}`;
 
-const MIN_MAX_DATE_SQL = ', MIN(date) as min_date, MAX(date) as max_date ';
+const MIN_MAX_DATE_SQL: string = ', MIN(date) as min_date, MAX(date) as max_date ';
 
-const executeThunk = (client, sql, params) => (callback) => {
+const executeThunk = async (client: CartoDB.SQL, sql: string, params: any): Promise<Record<string, any>> => (new Promise((resolve: (value: (PromiseLike<unknown> | unknown)) => void, reject: (reason?: any) => void) => {
     logger.debug(Mustache.render(sql, params));
-    client.execute(sql, params).done((data) => {
-        callback(null, data);
-    }).error((err) => {
-        callback(err, null);
+    client.execute(sql, params).done((data: Record<string, any>) => {
+        resolve(data);
+    }).error((error: ErrorSerializer) => {
+        reject(error);
     });
-};
+}));
 
-const deserializer = (obj) => (callback) => {
-    new JSONAPIDeserializer({ keyForAttribute: 'camelCase' }).deserialize(obj, callback);
-};
-
-
-const getToday = () => {
-    const today = new Date();
+const getToday = (): string => {
+    const today: Date = new Date();
     return `${today.getFullYear().toString()}-${(today.getMonth() + 1).toString()}-${today.getDate().toString()}`;
 };
 
-const getYesterday = () => {
-    const yesterday = new Date(Date.now() - (24 * 60 * 60 * 1000));
+const getYesterday = (): string => {
+    const yesterday: Date = new Date(Date.now() - (24 * 60 * 60 * 1000));
     return `${yesterday.getFullYear().toString()}-${(yesterday.getMonth() + 1).toString()}-${yesterday.getDate().toString()}`;
 };
 
 
-const defaultDate = () => {
-    const to = getToday();
-    const from = getYesterday();
+const defaultDate = (): string => {
+    const to: string = getToday();
+    const from: string = getYesterday();
     return `${from},${to}`;
 };
 
-const getPeriodText = (period) => {
-    const periods = period.split(',');
-    const days = (new Date(periods[1]) - new Date(periods[0])) / (24 * 60 * 60 * 1000);
+const getPeriodText = (period: string): string => {
+    const periods: string[] = period.split(',');
+    const days: number = (new Date(periods[1]).getTime() - new Date(periods[0]).getTime()) / (24 * 60 * 60 * 1000);
 
     switch (days) {
 
@@ -111,6 +110,9 @@ const getPeriodText = (period) => {
 
 class CartoDBService {
 
+    client: CartoDB.SQL;
+    apiUrl: string;
+
     constructor() {
         this.client = new CartoDB.SQL({
             user: config.get('cartoDB.user')
@@ -118,12 +120,11 @@ class CartoDBService {
         this.apiUrl = config.get('cartoDB.apiUrl');
     }
 
-    // eslint-disable-next-line consistent-return
-    getDownloadUrls(query, params) {
+    getDownloadUrls(query: string, params: Record<string, any>): Record<string, any> | void {
         try {
-            const formats = ['csv', 'geojson', 'kml', 'shp', 'svg'];
-            const download = {};
-            let queryFinal = Mustache.render(query, params);
+            const formats: string[] = ['csv', 'geojson', 'kml', 'shp', 'svg'];
+            const download: Record<string, any> = {};
+            let queryFinal: string = Mustache.render(query, params);
             logger.debug('antes de reemplazar', queryFinal);
             queryFinal = queryFinal.replace(MIN_MAX_DATE_SQL, '');
             logger.debug('antes de reemplazar', queryFinal);
@@ -132,7 +133,7 @@ class CartoDBService {
             queryFinal = queryFinal.replace('SELECT COUNT(pt.\*) AS value', 'SELECT pt.*');
             logger.debug('despues de reemplazar', queryFinal);
             queryFinal = encodeURIComponent(queryFinal);
-            for (let i = 0, { length } = formats; i < length; i++) {
+            for (let i: number = 0, { length } = formats; i < length; i++) {
                 download[formats[i]] = `${this.apiUrl}?q=${queryFinal}&format=${formats[i]}`;
             }
             return download;
@@ -141,10 +142,10 @@ class CartoDBService {
         }
     }
 
-    * getNational(iso, alertQuery, period = defaultDate()) {
+    async getNational(iso: string, alertQuery: string, period: string = defaultDate()): Promise<Record<string, any> | void> {
         logger.debug('Obtaining national of iso %s', iso);
-        const periods = period.split(',');
-        const params = {
+        const periods: string[] = period.split(',');
+        const params: { iso: string; end: string; begin: string, additionalSelect?: string } = {
             iso,
             begin: periods[0],
             end: periods[1]
@@ -152,9 +153,9 @@ class CartoDBService {
         if (alertQuery) {
             params.additionalSelect = MIN_MAX_DATE_SQL;
         }
-        const data = yield executeThunk(this.client, ISO, params);
+        const data: Record<string, any> = await executeThunk(this.client, ISO, params);
         if (data.rows && data.rows.length > 0) {
-            const result = data.rows[0];
+            const result: Record<string, any> = data.rows[0];
             result.period = getPeriodText(period);
             result.downloadUrls = this.getDownloadUrls(ISO, params);
             return result;
@@ -162,10 +163,10 @@ class CartoDBService {
         return null;
     }
 
-    * getSubnational(iso, id1, alertQuery, period = defaultDate()) {
+    async getSubnational(iso: string, id1: string, alertQuery: string, period: string = defaultDate()): Promise<Record<string, any> | void> {
         logger.debug('Obtaining subnational of iso %s and id1', iso, id1);
-        const periods = period.split(',');
-        const params = {
+        const periods: string[] = period.split(',');
+        const params: { iso: string; id1: string; end: string; begin: string, additionalSelect?: string } = {
             iso,
             id1,
             begin: periods[0],
@@ -174,9 +175,9 @@ class CartoDBService {
         if (alertQuery) {
             params.additionalSelect = MIN_MAX_DATE_SQL;
         }
-        const data = yield executeThunk(this.client, ID1, params);
+        const data: Record<string, any> = await executeThunk(this.client, ID1, params);
         if (data.rows && data.rows.length > 0) {
-            const result = data.rows[0];
+            const result: Record<string, any> = data.rows[0];
             result.period = getPeriodText(period);
             result.downloadUrls = this.getDownloadUrls(ID1, params);
             return result;
@@ -184,22 +185,22 @@ class CartoDBService {
         return null;
     }
 
-    * getUse(useTable, id, alertQuery, period = defaultDate()) {
+    async getUse(useTable: string, id: string, alertQuery: string, period: string = defaultDate()): Promise<Record<string, any> | void> {
         logger.debug('Obtaining use with id %s', id);
-        const periods = period.split(',');
-        const params = {
+        const periods: string[] = period.split(',');
+        const params: { pid: any; end: string; useTable: any; begin: string, additionalSelect?: string } = {
             useTable,
             pid: id,
             begin: periods[0],
-            end: periods[1]
+            end: periods[1],
         };
         if (alertQuery) {
             params.additionalSelect = MIN_MAX_DATE_SQL;
         }
-        const data = yield executeThunk(this.client, USE, params);
+        const data: Record<string, any> = await executeThunk(this.client, USE, params);
 
         if (data.rows && data.rows.length > 0) {
-            const result = data.rows[0];
+            const result: Record<string, any> = data.rows[0];
             result.period = getPeriodText(period);
             result.downloadUrls = this.getDownloadUrls(USE, params);
             return result;
@@ -207,10 +208,10 @@ class CartoDBService {
         return null;
     }
 
-    * getWdpa(wdpaid, alertQuery, period = defaultDate()) {
+    async getWdpa(wdpaid: string, alertQuery: string, period: string = defaultDate()): Promise<Record<string, any> | void> {
         logger.debug('Obtaining wpda of id %s', wdpaid);
-        const periods = period.split(',');
-        const params = {
+        const periods: string[] = period.split(',');
+        const params: { end: string; begin: string; wdpaid: any, additionalSelect?: string } = {
             wdpaid,
             begin: periods[0],
             end: periods[1]
@@ -218,9 +219,9 @@ class CartoDBService {
         if (alertQuery) {
             params.additionalSelect = MIN_MAX_DATE_SQL;
         }
-        const data = yield executeThunk(this.client, WDPA, params);
+        const data: Record<string, any> = await executeThunk(this.client, WDPA, params);
         if (data.rows && data.rows.length > 0) {
-            const result = data.rows[0];
+            const result: Record<string, any> = data.rows[0];
             result.period = getPeriodText(period);
             result.downloadUrls = this.getDownloadUrls(WDPA, params);
             return result;
@@ -228,17 +229,20 @@ class CartoDBService {
         return null;
     }
 
-    // eslint-disable-next-line class-methods-use-this
-    * getGeostore(hashGeoStore) {
+    async getGeostore(hashGeoStore: string, apiKey: string): Promise<Record<string, any> | void> {
         logger.debug('Obtaining geostore with hash %s', hashGeoStore);
         try {
-            const result = yield RWAPIMicroservice.requestToMicroservice({
-                uri: `/geostore/${hashGeoStore}`,
+            const result: Record<string, any> = await RWAPIMicroservice.requestToMicroservice({
+                uri: `/v1/geostore/${hashGeoStore}`,
                 method: 'GET',
-                json: true
+                headers: {
+                    'x-api-key': apiKey,
+                }
             });
 
-            return yield deserializer(result);
+            return await new Deserializer({
+                keyForAttribute: 'camelCase'
+            }).deserialize(result);
         } catch (error) {
             logger.warn('Error obtaining geostore:');
             logger.warn(error);
@@ -246,14 +250,14 @@ class CartoDBService {
         }
     }
 
-    * getWorld(hashGeoStore, alertQuery, period = defaultDate()) {
+    async getWorld(hashGeoStore: string, alertQuery: string, period: string = defaultDate(), apiKey: string): Promise<Record<string, any> | void> {
         logger.debug('Obtaining world with hashGeoStore %s', hashGeoStore);
 
-        const geostore = yield this.getGeostore(hashGeoStore);
+        const geostore: Record<string, any> | void = await this.getGeostore(hashGeoStore, apiKey);
         if (geostore && geostore.geojson) {
             logger.debug('Executing query in cartodb with geostore', geostore);
-            const periods = period.split(',');
-            const params = {
+            const periods: string[] = period.split(',');
+            const params: { geojson: string; end: string; begin: string, additionalSelect?: string } = {
                 geojson: JSON.stringify(geostore.geojson.features[0].geometry),
                 begin: periods[0],
                 end: periods[1]
@@ -261,9 +265,9 @@ class CartoDBService {
             if (alertQuery) {
                 params.additionalSelect = MIN_MAX_DATE_SQL;
             }
-            const data = yield executeThunk(this.client, WORLD, params);
+            const data: Record<string, any> = await executeThunk(this.client, WORLD, params);
             if (data.rows && data.rows.length > 0) {
-                const result = data.rows[0];
+                const result: Record<string, any> = data.rows[0];
                 result.period = getPeriodText(period);
                 result.downloadUrls = this.getDownloadUrls(WORLD, params);
                 return result;
@@ -273,15 +277,16 @@ class CartoDBService {
         throw new NotFound('Geostore not found');
     }
 
-    * latest(limit = 3) {
-        logger.debug('Obtaining latest with limit %s', limit);
-        const params = {
-            limit
+    async latest(limit: string = "3"): Promise<Record<string, any>> {
+        const parserdLimit: number = parseInt(limit, 10);
+        logger.debug('Obtaining latest with limit %s', parserdLimit);
+        const params: { limit: number } = {
+            limit: parserdLimit
         };
-        const data = yield executeThunk(this.client, LATEST, params);
+        const data: Record<string, any> = await executeThunk(this.client, LATEST, params);
         logger.debug('data', data);
         if (data.rows) {
-            const result = data.rows;
+            const result: Record<string, any> = data.rows;
             return result;
         }
         return null;
@@ -289,4 +294,4 @@ class CartoDBService {
 
 }
 
-module.exports = new CartoDBService();
+export default new CartoDBService();
